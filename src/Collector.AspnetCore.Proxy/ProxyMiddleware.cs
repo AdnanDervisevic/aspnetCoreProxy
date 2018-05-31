@@ -1,9 +1,12 @@
 ﻿using System;
+using System.IO;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -44,7 +47,10 @@ namespace Collector.AspnetCore.Proxy
 
 
                         if (_options.Options.UseLogger)
-                            logger.LogDebug("Initiating request {@Request}", context.Request);
+                        {
+                            logger.LogInformation("Client initiated {RequestMethod} request {@RequestUrl}", context.Request.Method, context.Request.Path.Value);
+                            context.Request.EnableRewind(); // If we experience slowdown, this should be culprit
+                        }
 
                         var client = context.RequestServices.GetService<ITypedProxyClient<TOptions>>();
 
@@ -61,15 +67,32 @@ namespace Collector.AspnetCore.Proxy
 
             });
         }
+        
         private async Task Execute(ILogger logger, HttpContext context, Func<Task<HttpResponseMessage>> func)
         {
             var res = await func();
             context.Response.StatusCode = (int)res.StatusCode;
 
             if (_options.Options.UseLogger && !res.IsSuccessStatusCode)
-                logger.LogInformation("Unsuccesful response {@Response}", res);
+            {
+                LogRequestBody(logger, context);
+                logger.LogWarning("Unsuccesful response {@Response}, Body: {@Info}", new { res.Content.Headers.ContentType.MediaType, res.RequestMessage.RequestUri }, await res.Content.ReadAsStringAsync());
+            }
 
             await res.Content.CopyToAsync(context.Response.Body);
+        }
+        
+        private static void LogRequestBody(ILogger logger, HttpContext context)
+        {
+            string body;
+
+            context.Request.Body.Position = 0;
+            using (var reader = new StreamReader(context.Request.Body, Encoding.UTF8, true, 1024, true))
+            {
+                body = reader.ReadToEnd();
+            }
+
+            logger.LogInformation("Request Body: {@Request}", body);
         }
 
         private string GetRequestUri(HttpRequest request)
