@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -25,7 +26,7 @@ namespace Collector.AspnetCore.Proxy
             _substringLength = _options.Options.SubstringStartWith?.Length ?? 0;
         }
 
-        
+
         public void Run()
         {
             _app.Run(async (context) =>
@@ -47,10 +48,7 @@ namespace Collector.AspnetCore.Proxy
 
 
                         if (_options.Options.UseLogger)
-                        {
                             logger.LogInformation("Client initiated {RequestMethod} request {@RequestUrl}", context.Request.Method, context.Request.Path.Value);
-                            context.Request.EnableRewind(); // If we experience slowdown, this should be culprit
-                        }
 
                         var client = context.RequestServices.GetService<ITypedProxyClient<TOptions>>();
 
@@ -67,21 +65,21 @@ namespace Collector.AspnetCore.Proxy
 
             });
         }
-        
+
         private async Task Execute(ILogger logger, HttpContext context, Func<Task<HttpResponseMessage>> func)
         {
             var res = await func();
+
             context.Response.StatusCode = (int)res.StatusCode;
+            context.Response.ContentType = res.Content.Headers.ContentType?.MediaType;
 
-            if (_options.Options.UseLogger && !res.IsSuccessStatusCode)
-            {
-                LogRequestBody(logger, context);
-                logger.LogWarning("Unsuccesful response {@Response}, Body: {@Info}", new { res.Content.Headers.ContentType.MediaType, res.RequestMessage.RequestUri }, await res.Content.ReadAsStringAsync());
-            }
+            if (res.StatusCode != HttpStatusCode.NoContent)
+                await res.Content.CopyToAsync(context.Response.Body);
 
-            await res.Content.CopyToAsync(context.Response.Body);
+            if (_options.Options.UseLogger && !res.IsSuccessStatusCode) // Request body would be nice, too, but couldn't get it to work
+                logger.LogWarning("Unsuccesful response {@Response}, Body: {@Info}", new { res.Content.Headers.ContentType?.MediaType, res.RequestMessage.RequestUri }, res.Content.ReadAsStringAsync().Result);
         }
-        
+
         private static void LogRequestBody(ILogger logger, HttpContext context)
         {
             string body;
