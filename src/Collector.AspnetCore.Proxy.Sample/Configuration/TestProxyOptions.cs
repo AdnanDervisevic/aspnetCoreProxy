@@ -6,8 +6,8 @@ namespace Collector.AspnetCore.Proxy.Sample.Configuration
     {
         public string BaseUrl { get; set; }
         public bool UseLogger { get; set; }
-        public bool ChallangeAuthenticate { get; set; }
-        public string ChallangeAuthenticateSchema { get; set; }
+        public bool ChallengeAuthenticate { get; set; }
+        public string ChallengeAuthenticateSchema { get; set; }
         public string UrlStartsWith { get; set; }
         public string SubstringStartWith { get; set; }
         public string Name { get; set; }
