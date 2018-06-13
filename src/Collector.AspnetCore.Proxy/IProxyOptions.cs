@@ -4,8 +4,8 @@
     {
         string BaseUrl { get; }
         bool UseLogger { get;  }
-        bool ChallangeAuthenticate { get;  }
-        string ChallangeAuthenticateSchema { get; }
+        bool ChallengeAuthenticate { get;  }
+        string ChallengeAuthenticateSchema { get; }
         string UrlStartsWith { get; }
         string SubstringStartWith { get; }
     }

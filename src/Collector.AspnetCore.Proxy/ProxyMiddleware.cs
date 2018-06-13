@@ -39,9 +39,9 @@ namespace Collector.AspnetCore.Proxy
                 {
                     if (context.Request.Path.HasValue && context.Request.Path.Value.StartsWith(_options.Options.UrlStartsWith))
                     {
-                        if (_options.Options.ChallangeAuthenticate)
+                        if (_options.Options.ChallengeAuthenticate)
                         {
-                            await context.ChallengeAsync(_options.Options.ChallangeAuthenticateSchema);
+                            await context.ChallengeAsync(_options.Options.ChallengeAuthenticateSchema);
                             if (!context.User.Identity.IsAuthenticated)
                                 return;
                         }
